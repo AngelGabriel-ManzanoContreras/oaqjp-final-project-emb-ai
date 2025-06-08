@@ -2,29 +2,43 @@ import requests
 import json
 
 def emotion_detector(text_to_analyze):
+    if not text_to_analyze.strip():
+        return {
+            'anger': None,
+            'disgust': None,
+            'fear': None,
+            'joy': None,
+            'sadness': None,
+            'dominant_emotion': None
+        }
+
     url = 'https://sn-watson-emotion.labs.skills.network/v1/watson.runtime.nlp.v1/NlpService/EmotionPredict'
-    headers = {"grpc-metadata-mm-model-id": "emotion_aggregated-workflow_lang_en_stock"}
-    input_json = { "raw_document": { "text": text_to_analyze } }
+    headers = {"Content-Type": "application/json",
+               "grpc-metadata-mm-model-id": "emotion_aggregated-workflow_lang_en_stock"}
 
-    response = requests.post(url, headers=headers, json=input_json)
-    result = json.loads(response.text)
+    payload = {"raw_document": {"text": text_to_analyze}}
+    response = requests.post(url, headers=headers, json=payload)
 
-    emotion_scores = result['emotionPredictions'][0]['emotion']
+    if response.status_code == 400:
+        return {
+            'anger': None,
+            'disgust': None,
+            'fear': None,
+            'joy': None,
+            'sadness': None,
+            'dominant_emotion': None
+        }
 
-    anger = emotion_scores.get('anger', 0)
-    disgust = emotion_scores.get('disgust', 0)
-    fear = emotion_scores.get('fear', 0)
-    joy = emotion_scores.get('joy', 0)
-    sadness = emotion_scores.get('sadness', 0)
+    result = response.json()
+    emotions = result['emotionPredictions'][0]['emotion']
 
-    emotions = {
-        'anger': anger,
-        'disgust': disgust,
-        'fear': fear,
-        'joy': joy,
-        'sadness': sadness
+    dominant = max(emotions, key=emotions.get)
+
+    return {
+        'anger': emotions.get('anger'),
+        'disgust': emotions.get('disgust'),
+        'fear': emotions.get('fear'),
+        'joy': emotions.get('joy'),
+        'sadness': emotions.get('sadness'),
+        'dominant_emotion': dominant
     }
-    dominant_emotion = max(emotions, key=emotions.get)
-    emotions['dominant_emotion'] = dominant_emotion
-
-    return emotions
